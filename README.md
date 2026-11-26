@@ -5,7 +5,7 @@ Asistente RAG que responde preguntas sobre la documentación oficial de FastAPI,
 ## Estado
 
 - [x] Fase 1: Fundamentos
-- [ ] Fase 2: Ingesta
+- [ ] Fase 2: Ingesta (en progreso)
 - [ ] Fase 3: Retrieval
 - [ ] Fase 4: Generación con citas
 - [ ] Fase 5: Evals
@@ -21,6 +21,13 @@ Python 3.12 · uv · Ollama (`nomic-embed-text`) · numpy
     uv sync
     ollama pull nomic-embed-text
     uv run python -m docpilot.demo_embeddings
+
+    # Descargar el corpus (solo docs/en/docs del repo de FastAPI)
+    git clone --depth 1 --filter=blob:none --sparse https://github.com/fastapi/fastapi.git data/fastapi
+    git -C data/fastapi sparse-checkout set docs/en/docs
+
+    # Cortar la documentación en chunks
+    uv run python -m docpilot.ingesta
 
 ## Bitácora
 
@@ -44,3 +51,17 @@ Python 3.12 · uv · Ollama (`nomic-embed-text`) · numpy
 | Inglés | 0.673 | 0.450 (VAR) | **0.223 (~6x)** | último |
 
 - **Conclusión:** hipótesis confirmada: `nomic-embed-text` rinde mucho mejor en inglés. Decisión pendiente para la fase 6: preguntas en español sobre documentación en inglés (modelo multilingüe o traducir la consulta), a decidir midiendo.
+
+### Día 2: ingesta y chunking
+
+- **Corpus:** 159 archivos Markdown de la documentación oficial (`docs/en/docs` del repo de FastAPI). Se descargan con sparse checkout en lugar de hacer scraping del sitio web: el Markdown es la fuente limpia y no trae menús ni HTML.
+- **Chunking por estructura:** se corta en los títulos con ancla `{ #ancla }`, que además dan la URL exacta para citar (por ejemplo `https://fastapi.tiangolo.com/tutorial/body/#create-your-data-model`).
+- **Experimento: cortar también en `###`:**
+
+| | Chunks | Mín | Promedio | Máx |
+|---|---|---|---|---|
+| `#` y `##` | 719 | 49 | 1005 | 18 356 |
+| `#`, `##` y `###` | 1075 | 6 | 651 | 6 203 |
+
+- **Conclusión:** se adopta `###`. Las secciones con muchos subtemas (por ejemplo "Previous tools", con 17 herramientas) dejan de quedar en un solo chunk: un chunk = un tema. Costo: aparecen chunks muy pequeños (mín. 6 caracteres), a resolver en la limpieza.
+- **Pendiente:** 33 archivos no generan chunks (referencia de la API autogenerada, notas de versiones y páginas de la comunidad). Se van a excluir explícitamente, con su motivo.
