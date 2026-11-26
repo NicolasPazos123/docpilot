@@ -4,7 +4,7 @@ Asistente RAG que responde preguntas sobre la documentación oficial de FastAPI,
 
 ## Estado
 
-- [ ] Fase 1: Fundamentos (en progreso)
+- [x] Fase 1: Fundamentos
 - [ ] Fase 2: Ingesta
 - [ ] Fase 3: Retrieval
 - [ ] Fase 4: Generación con citas
