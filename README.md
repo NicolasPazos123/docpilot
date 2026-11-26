@@ -27,5 +27,11 @@ Python 3.12 · uv · Ollama (`nomic-embed-text`) · numpy
 ### Día 1: embeddings y búsqueda semántica
 
 - Demo que convierte una pregunta y 4 frases en embeddings (768 dimensiones) y las ordena por similitud coseno.
-- **Hallazgo:** sin prefijos de tarea y con textos en español, los puntajes quedan muy apretados (0.52–0.60). Una frase sobre arroz (0.592) casi empata con la correcta (0.596).
-- **Siguiente:** medir el efecto de los prefijos `search_query:` / `search_document:`.
+- **Experimento: prefijos de tarea** (`search_query:` / `search_document:`) en `nomic-embed-text`:
+
+| | Correcto (Haaland) | Mejor incorrecto (arroz) | Margen |
+|---|---|---|---|
+| Sin prefijos | 0.596 | 0.592 | 0.004 |
+| Con prefijos | 0.637 | 0.599 | **0.038 (~10x)** |
+
+- **Conclusión:** los prefijos mejoran mucho la separación, pero en español el modelo sigue confundiendo el ranking (el arroz queda 2.º). Hipótesis: el modelo se entrenó sobre todo en inglés. A DocPilot no le afecta (la documentación de FastAPI está en inglés).
