@@ -64,4 +64,9 @@ Python 3.12 · uv · Ollama (`nomic-embed-text`) · numpy
 | `#`, `##` y `###` | 1075 | 6 | 651 | 6 203 |
 
 - **Conclusión:** se adopta `###`. Las secciones con muchos subtemas (por ejemplo "Previous tools", con 17 herramientas) dejan de quedar en un solo chunk: un chunk = un tema. Costo: aparecen chunks muy pequeños (mín. 6 caracteres), a resolver en la limpieza.
-- **Pendiente:** 33 archivos no generan chunks (referencia de la API autogenerada, notas de versiones y páginas de la comunidad). Se van a excluir explícitamente, con su motivo.
+- **Exclusiones a propósito:** 33 archivos se excluyen explícitamente, cada uno con su motivo en `EXCLUSIONES` (`ingesta.py`):
+  - `reference/` (24 archivos): la referencia de la API se genera desde el código fuente; el `.md` no trae el contenido.
+  - `release-notes.md`: historial de versiones, ruido para preguntas de "cómo hago X".
+  - Fragmentos que se insertan en otras páginas (`agent-banner.md`, `translation-banner.md`) y páginas sobre el proyecto (`contributing.md`, `fastapi-people.md`, etc.).
+- **Resultado:** 126 archivos procesados → 1075 chunks · 33 excluidos a propósito · **0 archivos sin chunks inesperados** (alarma de diagnóstico).
+- **Pendiente (limpieza):** quitar marcas del sitio (`///`, `{* *}`, `<img>`), juntar chunks muy pequeños y agregar la ruta de títulos (`Alternatives > Previous tools > Flask`) para no perder contexto al cortar en `###`.
