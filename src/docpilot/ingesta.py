@@ -20,11 +20,14 @@ EXCLUSIONES = {
     "_llm-test.md": "Archivo interno de pruebas de FastAPI, no es documentación",
 }
 
+PATRON_LINK = re.compile(r"\[([^\]]+)\]\([^)]*\)")  # [Flask](https://...) -> Flask
+
 PATRONES_LIMPIEZA = [
     (re.compile(r"^[ \t]*\{\*.*\*\}\s*$", re.MULTILINE), ""),  # {* ../../docs_src/... *}
     (re.compile(r"^[ \t]*///.*$", re.MULTILINE), ""),  # /// note, /// tip, ///
     (re.compile(r"<img[^>]*>"), ""),  # <img src="...">
     (re.compile(r"</?abbr[^>]*>"), ""),  # <abbr title="...">UIs</abbr> -> UIs
+    (re.compile(r"<!--.*?-->", re.DOTALL), ""),  # <!-- comentarios HTML -->
     (re.compile(r"\n{3,}"), "\n\n"),  # líneas en blanco de sobra
 ]
 
@@ -72,7 +75,7 @@ def cortar_archivo(archivo: Path) -> list[Chunk]:
         chunks.append(
             Chunk(
                 archivo=archivo.relative_to(DOCS_DIR).as_posix(),
-                titulo=titulo.group(2),
+                titulo=PATRON_LINK.sub(r"\1", titulo.group(2)),
                 ancla=titulo.group(3),
                 url=f"{url_de(archivo)}#{titulo.group(3)}",
                 texto=texto,
