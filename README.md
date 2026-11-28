@@ -6,7 +6,7 @@ Asistente RAG que responde preguntas sobre la documentación oficial de FastAPI,
 
 - [x] Fase 1: Fundamentos
 - [x] Fase 2: Ingesta
-- [ ] Fase 3: Retrieval
+- [ ] Fase 3: Retrieval (en progreso)
 - [ ] Fase 4: Generación con citas
 - [ ] Fase 5: Evals
 - [ ] Fase 6: Mejoras medidas
@@ -14,7 +14,7 @@ Asistente RAG que responde preguntas sobre la documentación oficial de FastAPI,
 
 ## Stack
 
-Python 3.12 · uv · Ollama (`nomic-embed-text`) · numpy
+Python 3.12 · uv · Ollama (`nomic-embed-text`) · numpy · Postgres 17 + pgvector (Docker Compose) · psycopg
 
 ## Cómo correrlo
 
@@ -28,6 +28,15 @@ Python 3.12 · uv · Ollama (`nomic-embed-text`) · numpy
 
     # Cortar la documentación en chunks
     uv run python -m docpilot.ingesta
+
+    # Levantar Postgres con pgvector
+    docker compose up -d
+
+    # Calcular los embeddings y guardarlos en la base
+    uv run python -m docpilot.indexar
+
+    # Buscar
+    uv run python -m docpilot.buscar "how do I read a cookie?"
 
 ## Bitácora
 
@@ -82,3 +91,20 @@ Python 3.12 · uv · Ollama (`nomic-embed-text`) · numpy
 | Corte en `#`, `##`, `###` | 1075 | 6 | 651 | 6 203 |
 | + limpieza y exclusiones | 1055 | 22 | 608 | 6 148 |
 | + juntar chunks chicos | **943** | **36** | **683** | **6 148** |
+
+### Día 3: base de datos vectorial y primera búsqueda
+
+- **Postgres 17 + pgvector 0.8.7** en Docker Compose (`docker-compose.yml`), con un volumen (`pgdata`) para que los datos sobrevivan si se recrea el contenedor. Puerto 5433 en el host para no chocar con otros Postgres.
+- **Tabla `chunks`:** `archivo`, `titulo`, `ancla`, `url`, `ruta`, `texto` y `embedding vector(768)`.
+- **Indexación** (`indexar.py`): 943 chunks → embeddings de `ruta + texto` con el prefijo `search_document:`, por lotes de 32. **83 segundos** en una Mac M1. Es idempotente (`TRUNCATE` antes de insertar).
+- **Búsqueda** (`buscar.py`): la pregunta se convierte en embedding con `search_query:` y se ordena por distancia coseno (`<=>`) en SQL.
+- **Primeras pruebas:**
+
+| Pregunta | Top 1 | Similitud top 1 | Margen 1.º–2.º |
+|---|---|---|---|
+| how do I deploy FastAPI with Docker? | Docker > Deploy the Container Image | 0.872 | 0.003 (los 3 son de `docker.md`) |
+| how do I read a cookie? | Cookie Parameter Models > Check the Docs | 0.698 | 0.002 |
+| ¿cómo leo una cookie? | Cookie Parameters > Declare `Cookie` parameters | 0.588 | 0.000 |
+
+- **Hallazgos:** el retrieval encuentra bien el **tema**, pero el **orden dentro del tema** es frágil: en la pregunta de cookies, la mejor sección quedó 2.ª y el 3.º resultado trata de *enviar* cookies, no de leerlas. En español la similitud cae (0.698 → 0.588), lo que confirma el efecto del idioma del Día 1.
+- **Siguiente:** medir esto con un dataset de preguntas (fase 5) y probar re-ranking (fase 6).
