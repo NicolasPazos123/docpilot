@@ -20,6 +20,7 @@ EXCLUSIONES = {
     "_llm-test.md": "Archivo interno de pruebas de FastAPI, no es documentación",
 }
 
+MIN_CARACTERES = 150  # chunks más chicos se juntan con el anterior del mismo archivo
 PATRON_LINK = re.compile(r"\[([^\]]+)\]\([^)]*\)")  # [Flask](https://...) -> Flask
 
 PATRONES_LIMPIEZA = [
@@ -38,7 +39,12 @@ class Chunk:
     titulo: str
     ancla: str
     url: str
+    ruta: str
     texto: str
+
+    @property
+    def texto_con_contexto(self) -> str:
+        return f"{self.ruta}\n\n{self.texto}"
 
 
 def motivo_exclusion(ruta: str) -> str | None:
@@ -66,7 +72,11 @@ def cortar_archivo(archivo: Path) -> list[Chunk]:
     contenido = archivo.read_text(encoding="utf-8")
     titulos = list(PATRON_TITULO.finditer(contenido))
     chunks = []
+    pila: list[str] = []
     for i, titulo in enumerate(titulos):
+        nivel = len(titulo.group(1))
+        nombre = PATRON_LINK.sub(r"\1", titulo.group(2))
+        pila = pila[: nivel - 1] + [nombre]
         inicio = titulo.end()
         fin = titulos[i + 1].start() if i + 1 < len(titulos) else len(contenido)
         texto = limpiar(contenido[inicio:fin])
@@ -75,13 +85,25 @@ def cortar_archivo(archivo: Path) -> list[Chunk]:
         chunks.append(
             Chunk(
                 archivo=archivo.relative_to(DOCS_DIR).as_posix(),
-                titulo=PATRON_LINK.sub(r"\1", titulo.group(2)),
+                titulo=nombre,
                 ancla=titulo.group(3),
                 url=f"{url_de(archivo)}#{titulo.group(3)}",
+                ruta=" > ".join(pila),
                 texto=texto,
             )
         )
-    return chunks
+    return juntar_chicos(chunks)
+
+
+def juntar_chicos(chunks: list[Chunk]) -> list[Chunk]:
+    resultado: list[Chunk] = []
+    for chunk in chunks:
+        if resultado and len(chunk.texto) < MIN_CARACTERES:
+            anterior = resultado[-1]
+            anterior.texto += f"\n\n{chunk.titulo}\n\n{chunk.texto}"
+        else:
+            resultado.append(chunk)
+    return resultado
 
 
 def main() -> None:
@@ -109,6 +131,8 @@ def main() -> None:
         print(f"  ⚠️ {ruta}")
     print(f"Chunks creados: {len(chunks)}")
     print(f"Chunks con marcas sin limpiar: {len(con_marcas)}")
+    chicos = [c for c in chunks if len(c.texto) < MIN_CARACTERES]
+    print(f"Chunks chicos que quedaron solos (primeros de su archivo): {len(chicos)}")
     print(f"Largo (caracteres): mín {min(largos)}, promedio {sum(largos) // len(largos)}, máx {max(largos)}")
 
 
