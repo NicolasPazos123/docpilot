@@ -106,6 +106,15 @@ def juntar_chicos(chunks: list[Chunk]) -> list[Chunk]:
     return resultado
 
 
+def cargar_chunks() -> list[Chunk]:
+    chunks: list[Chunk] = []
+    for archivo in sorted(DOCS_DIR.rglob("*.md")):
+        if motivo_exclusion(archivo.relative_to(DOCS_DIR).as_posix()):
+            continue
+        chunks.extend(cortar_archivo(archivo))
+    return chunks
+
+
 def main() -> None:
     archivos = sorted(DOCS_DIR.rglob("*.md"))
     chunks: list[Chunk] = []
