@@ -1,0 +1,15 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: docpilot-db
+    environment:
+      POSTGRES_USER: docpilot
+      POSTGRES_PASSWORD: docpilot
+      POSTGRES_DB: docpilot
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
