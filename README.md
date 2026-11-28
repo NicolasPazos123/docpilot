@@ -5,7 +5,7 @@ Asistente RAG que responde preguntas sobre la documentación oficial de FastAPI,
 ## Estado
 
 - [x] Fase 1: Fundamentos
-- [ ] Fase 2: Ingesta (en progreso)
+- [x] Fase 2: Ingesta
 - [ ] Fase 3: Retrieval
 - [ ] Fase 4: Generación con citas
 - [ ] Fase 5: Evals
@@ -69,4 +69,16 @@ Python 3.12 · uv · Ollama (`nomic-embed-text`) · numpy
   - `release-notes.md`: historial de versiones, ruido para preguntas de "cómo hago X".
   - Fragmentos que se insertan en otras páginas (`agent-banner.md`, `translation-banner.md`) y páginas sobre el proyecto (`contributing.md`, `fastapi-people.md`, etc.).
 - **Resultado:** 126 archivos procesados → 1075 chunks · 33 excluidos a propósito · **0 archivos sin chunks inesperados** (alarma de diagnóstico).
-- **Pendiente (limpieza):** quitar marcas del sitio (`///`, `{* *}`, `<img>`), juntar chunks muy pequeños y agregar la ruta de títulos (`Alternatives > Previous tools > Flask`) para no perder contexto al cortar en `###`.
+- **Limpieza** (función `limpiar`, aplicada a cada chunk):
+  - Se quitan las marcas del sitio: huecos de código `{* ... *}`, marcos de notas `///` (también indentados), `<img>`, `<abbr>` y comentarios HTML `<!-- -->`.
+  - Se quitan los links de Markdown de los títulos: `[Flask](https://...)` → `Flask`.
+  - Control de calidad: se cuentan los chunks que aún contienen alguna marca, usando los mismos patrones de limpieza → **0**.
+  - Se excluyó además `_llm-test.md` (archivo interno de pruebas de FastAPI).
+- **Ruta de títulos** (*contextual chunk headers*): cada chunk guarda el camino de títulos que tiene encima, por ejemplo `Alternatives, Inspiration and Comparisons > Previous tools > Flask`. Para el embedding se usa `ruta + texto`, así un chunk de `###` no pierde el contexto de su sección.
+- **Chunks chicos:** los chunks de menos de 150 caracteres se juntan con el anterior del mismo archivo (manteniendo la cita del anterior). Quedan 22 chicos que son la introducción de su archivo y no tienen anterior.
+
+| Paso | Chunks | Mín | Promedio | Máx |
+|---|---|---|---|---|
+| Corte en `#`, `##`, `###` | 1075 | 6 | 651 | 6 203 |
+| + limpieza y exclusiones | 1055 | 22 | 608 | 6 148 |
+| + juntar chunks chicos | **943** | **36** | **683** | **6 148** |
